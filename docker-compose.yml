@@ -10,8 +10,7 @@ services:
       - "8080:8080"
     environment:
       - GO_ENV=development
-    volumes:
-      - .:/app
+      - REDIS_URL=redis:6379
     restart: unless-stopped
     depends_on:
       - redis
@@ -32,7 +31,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
 
   grafana:
