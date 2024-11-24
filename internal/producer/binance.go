@@ -3,7 +3,6 @@ package producer
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,7 +19,7 @@ type BinanceProducer struct {
 	done    chan struct{}
 }
 
-func NewBinanceProducer(symbols []string, pool pool.Pool) (*BinanceProducer, error) {
+func NewBinanceProducer(symbols []string, pool pool.Pool) (Producer, error) {
 	if len(symbols) == 0 {
 		return nil, fmt.Errorf("at least one symbol is required")
 	}
@@ -33,12 +32,7 @@ func NewBinanceProducer(symbols []string, pool pool.Pool) (*BinanceProducer, err
 }
 
 func (b *BinanceProducer) Connect(ctx context.Context) error {
-	streams := make([]string, len(b.symbols))
-	for i, symbol := range b.symbols {
-		streams[i] = fmt.Sprintf("%s@trade", strings.ToLower(symbol))
-	}
-
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", strings.Join(streams, "/"))
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@trade", b.symbols[0])
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -58,7 +52,6 @@ func (b *BinanceProducer) Start(ctx context.Context) error {
 	}
 
 	go b.read(ctx)
-
 	return nil
 }
 
@@ -85,29 +78,14 @@ func (b *BinanceProducer) read(ctx context.Context) {
 			var event domain.TradeEvent
 			err := b.conn.ReadJSON(&event)
 			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-					return
-				}
-				continue
-			}
-
-			price, err := parseFloat(event.Price)
-			if err != nil {
-				fmt.Printf("error parsing price: %v\n", err)
-				continue
-			}
-
-			quantity, err := parseFloat(event.Quantity)
-			if err != nil {
-				fmt.Printf("error parsing quantity: %v\n", err)
 				continue
 			}
 
 			trade := domain.Trade{
 				Symbol:   event.Symbol,
 				ID:       event.TradeID,
-				Price:    price,
-				Quantity: quantity,
+				Price:    parseFloat(event.Price),
+				Quantity: parseFloat(event.Quantity),
 				Time:     parseTime(event.Time),
 				IsBuyer:  event.IsBuyer,
 				IsMaker:  false,
@@ -115,20 +93,16 @@ func (b *BinanceProducer) read(ctx context.Context) {
 
 			task := domain.NewTradeTask(trade)
 			if err := b.pool.Submit(task); err != nil {
-				fmt.Printf("failed to submit task: %v\n", err)
 				continue
 			}
 		}
 	}
 }
 
-func parseFloat(s string) (float64, error) {
+func parseFloat(s string) float64 {
 	var f float64
-	_, err := fmt.Sscanf(s, "%f", &f)
-	if err != nil {
-		return 0, fmt.Errorf("could not parse %q as float64: %w", s, err)
-	}
-	return f, nil
+	fmt.Sscanf(s, "%f", &f)
+	return f
 }
 
 func parseTime(ms int64) time.Time {
