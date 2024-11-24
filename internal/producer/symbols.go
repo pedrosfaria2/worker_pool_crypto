@@ -17,7 +17,7 @@ type exchangeInfo struct {
 	} `json:"symbols"`
 }
 
-func FetchUSDTPairs(ctx context.Context) ([]string, error) {
+func FetchPairs(ctx context.Context) ([]string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -45,13 +45,18 @@ func FetchUSDTPairs(ctx context.Context) ([]string, error) {
 
 	var pairs []string
 	for _, symbol := range info.Symbols {
-		if strings.HasSuffix(symbol.Symbol, "USDT") && symbol.Status == "TRADING" {
+		if (strings.HasSuffix(symbol.Symbol, "USDT") ||
+			strings.HasSuffix(symbol.Symbol, "BRL") ||
+			strings.HasSuffix(symbol.Symbol, "BTC") ||
+			strings.HasSuffix(symbol.Symbol, "USDC") ||
+			strings.HasSuffix(symbol.Symbol, "ETH")) &&
+			symbol.Status == "TRADING" {
 			pairs = append(pairs, strings.ToLower(symbol.Symbol))
 		}
 	}
 
 	if len(pairs) == 0 {
-		return nil, fmt.Errorf("no USDT trading pairs found")
+		return nil, fmt.Errorf("no trading pairs found for USDT or BRL")
 	}
 
 	return pairs, nil

@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	numWorkers = 500
-	queueSize  = 10000
+	numWorkers = 5000
+	queueSize  = 50000
 )
 
 func main() {
@@ -53,11 +53,11 @@ func main() {
 
 	defer redisClient.Close()
 
-	symbols, err := producer.FetchUSDTPairs(ctx)
+	symbols, err := producer.FetchPairs(ctx)
 	if err != nil {
 		log.Fatal("failed to fetch trading pairs:", err)
 	}
-	log.Printf("Found %d USDT trading pairs", len(symbols))
+	log.Printf("Found %d trading pairs", len(symbols))
 
 	repo := storage.NewRedisRepository(redisClient, 48*time.Hour)
 	if repo == nil {
