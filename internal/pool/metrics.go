@@ -41,7 +41,7 @@ func NewMetrics(namespace string) Metrics {
 			prometheus.HistogramOpts{
 				Namespace: namespace,
 				Name:      "task_duration_milliseconds",
-				Buckets:   []float64{5, 10, 25, 50, 100, 250, 500, 1000},
+				Buckets:   []float64{5, 10, 25, 50, 100, 250, 500, 1000, 10000},
 			},
 			[]string{"type"},
 		),
