@@ -5,8 +5,17 @@ import (
 	"time"
 )
 
-type TaskProcessor interface {
-	Process(ctz context.Context) error
+type TaskStatus int
+
+const (
+	TaskPending TaskStatus = iota
+	TaskRunning
+	TaskCompleted
+	TaskFailed
+)
+
+type Task interface {
+	Process(ctx context.Context) error
 	ID() string
 	Type() string
 	RetryCount() int
@@ -15,16 +24,9 @@ type TaskProcessor interface {
 	SetError(err error)
 	IncrementRetry()
 	Status() TaskStatus
+	SetStatus(status TaskStatus)
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
-}
-
-type TaskResult struct {
-	TaskID    string
-	Type      string
-	Status    TaskStatus
-	Error     error
-	Timestamp time.Time
 }
 
 type BaseTask struct {

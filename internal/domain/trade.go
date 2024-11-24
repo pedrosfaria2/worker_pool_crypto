@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 type Trade struct {
 	Symbol   string
@@ -26,33 +24,4 @@ type TradeEvent struct {
 	TradeTime int64
 	IsBuyer   bool
 	Ignored   bool
-}
-
-type TaskStatus int
-
-const (
-	TaskPending TaskStatus = iota
-	TaskRunning
-	TaskCompleted
-	TasFailed
-)
-
-type Task struct {
-	ID        string
-	Trade     Trade
-	Status    TaskStatus
-	Retries   int
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-func NewTask(trade Trade) *Task {
-	now := time.Now()
-	return &Task{
-		ID:        generateID(),
-		Trade:     trade,
-		Status:    TaskPending,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
 }
