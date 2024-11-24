@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -28,15 +29,28 @@ func main() {
 		redisAddr = "localhost:6379"
 	}
 
-	log.Printf("Conectando ao Redis em %s", redisAddr)
+	log.Printf("Connecting to Redis at %s", redisAddr)
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
 
-	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+	ctx := context.Background()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		log.Fatal("failed to connect to redis:", err)
 	}
+
+	testKey := "test:connection"
+	if err := redisClient.Set(ctx, testKey, "connected", time.Minute).Err(); err != nil {
+		log.Fatal("failed to write to redis:", err)
+	}
+
+	val, err := redisClient.Get(ctx, testKey).Result()
+	if err != nil {
+		log.Fatal("failed to read from redis:", err)
+	}
+	log.Printf("Redis connection test successful: %s = %s", testKey, val)
+
 	defer redisClient.Close()
 
 	repo := storage.NewRedisRepository(redisClient, 24*time.Hour)
@@ -48,14 +62,54 @@ func main() {
 	workerPool := pool.NewPool(numWorkers, queueSize, metrics)
 
 	symbols := []string{"btcusdt", "ethusdt"}
-	bnc, err := producer.NewBinanceProducer(symbols, workerPool)
+	bnc, err := producer.NewBinanceProducer(symbols, workerPool, repo)
 	if err != nil {
 		log.Fatal("failed to create producer:", err)
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	mux.HandleFunc("/trades", func(w http.ResponseWriter, r *http.Request) {
+		symbol := r.URL.Query().Get("symbol")
+		if symbol == "" {
+			symbol = "btcusdt"
+		}
+
+		trades, err := repo.FindBySymbol(r.Context(), symbol, 1000)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(trades)
+	})
+
+	mux.HandleFunc("/metrics/latest", func(w http.ResponseWriter, r *http.Request) {
+		symbol := r.URL.Query().Get("symbol")
+		if symbol == "" {
+			symbol = "btcusdt"
+		}
+
+		metrics, err := repo.GetLatestMetrics(r.Context(), symbol)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(metrics)
+	})
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Printf("HTTP server starting on %s", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
@@ -91,8 +145,15 @@ func main() {
 
 	cancel()
 
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
+
 	if err := bnc.Stop(); err != nil {
-		log.Println("Error stopping producer:", err)
+		log.Printf("Error stopping producer: %v", err)
 	}
 
 	workerPool.Stop()
