@@ -1,0 +1,787 @@
+{
+  "title": "Ultimate Metrics Dashboard",
+  "uid": "ultimate_metrics_dashboard_v6",
+  "version": 3,
+  "schemaVersion": 36,
+  "style": "dark",
+  "timezone": "browser",
+  "tags": ["professional"],
+  "panels": [
+    {
+      "type": "row",
+      "title": "🔷 Go Runtime Metrics",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Goroutines Count",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "orientation": "vertical"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "max": 5000,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 3000 },
+              { "color": "red", "value": 4000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_goroutines",
+          "legendFormat": "Goroutines",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Thread Usage",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 1, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "orientation": "vertical"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_threads",
+          "legendFormat": "Threads",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "GOMAXPROCS Setting",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_sched_gomaxprocs_threads",
+          "legendFormat": "GOMAXPROCS",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Go Garbage Collection Duration",
+      "type": "timeseries",
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 6 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "fieldOptions": {
+          "calcs": null,
+          "defaults": {},
+          "overrides": []
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 5,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_gc_duration_seconds{quantile=\"0\"}",
+          "legendFormat": "Min",
+          "refId": "A"
+        },
+        {
+          "expr": "go_gc_duration_seconds{quantile=\"0.5\"}",
+          "legendFormat": "Median",
+          "refId": "B"
+        },
+        {
+          "expr": "go_gc_duration_seconds{quantile=\"1\"}",
+          "legendFormat": "Max",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "🔶 Go Memory Metrics",
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Heap Allocation",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_memstats_heap_alloc_bytes",
+          "legendFormat": "Heap Allocated",
+          "refId": "A"
+        },
+        {
+          "expr": "go_memstats_heap_sys_bytes",
+          "legendFormat": "Heap Sys",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Heap Objects",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_memstats_heap_objects",
+          "legendFormat": "Heap Objects",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage Breakdown",
+      "type": "piechart",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": ["lastNotNull"]
+        },
+        "pieType": "donut",
+        "tooltip": {
+          "show": true,
+          "mode": "single"
+        },
+        "strokeWidth": 1,
+        "fontSize": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_memstats_heap_inuse_bytes",
+          "legendFormat": "Heap In Use",
+          "refId": "A"
+        },
+        {
+          "expr": "go_memstats_heap_idle_bytes",
+          "legendFormat": "Heap Idle",
+          "refId": "B"
+        },
+        {
+          "expr": "go_memstats_stack_inuse_bytes",
+          "legendFormat": "Stack In Use",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Next Garbage Collection Threshold",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 16, "w": 16, "h": 8 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1e9 },
+              { "color": "red", "value": 2e9 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "go_memstats_next_gc_bytes",
+          "legendFormat": "Next GC Bytes",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "🔹 Process Metrics",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_cpu_seconds_total",
+          "legendFormat": "CPU Seconds",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "Resident Memory",
+          "refId": "A"
+        },
+        {
+          "expr": "process_virtual_memory_bytes",
+          "legendFormat": "Virtual Memory",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "File Descriptors",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 33, "w": 8, "h": 8 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "max": 1048576,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 700000 },
+              { "color": "red", "value": 900000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_open_fds",
+          "legendFormat": "Open FDs",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Network I/O",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 33, "w": 16, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_network_receive_bytes_total",
+          "legendFormat": "Received Bytes",
+          "refId": "A"
+        },
+        {
+          "expr": "process_network_transmit_bytes_total",
+          "legendFormat": "Transmitted Bytes",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "🔸 Worker Pool Metrics",
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Workers Busy",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 42, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 30000 },
+              { "color": "red", "value": 50000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "worker_pool_workers_busy_current",
+          "legendFormat": "Workers Busy",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Queue Size",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 42, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1000 },
+              { "color": "red", "value": 5000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "worker_pool_queue_size_current",
+          "legendFormat": "Queue Size",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Tasks Overview",
+      "type": "bargauge",
+      "gridPos": { "x": 12, "y": 42, "w": 12, "h": 6 },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showUnfilled": true,
+        "displayMode": "lcd"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 2e6,
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1e6 },
+              { "color": "red", "value": 1.5e6 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "worker_pool_tasks_submitted_total{type=\"trade_processing\"}",
+          "legendFormat": "Submitted",
+          "refId": "A"
+        },
+        {
+          "expr": "worker_pool_tasks_completed_total{type=\"trade_processing\"}",
+          "legendFormat": "Completed",
+          "refId": "B"
+        },
+        {
+          "expr": "worker_pool_tasks_failed_total{type=\"trade_processing\"}",
+          "legendFormat": "Failed",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Task Duration Percentiles",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 48, "w": 24, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 2,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(worker_pool_task_duration_milliseconds_bucket{type=\"trade_processing\"}[5m])) by (le))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.75, sum(rate(worker_pool_task_duration_milliseconds_bucket{type=\"trade_processing\"}[5m])) by (le))",
+          "legendFormat": "P75",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(worker_pool_task_duration_milliseconds_bucket{type=\"trade_processing\"}[5m])) by (le))",
+          "legendFormat": "P90",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(worker_pool_task_duration_milliseconds_bucket{type=\"trade_processing\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "🔺 Prometheus Metrics",
+      "gridPos": { "x": 0, "y": 56, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Active Scrape Requests",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 57, "w": 12, "h": 8 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "max": 10,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 8 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "promhttp_metric_handler_requests_in_flight",
+          "legendFormat": "In Flight",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Total Scrape Requests",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 57, "w": 12, "h": 8 },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "fillOpacity": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(promhttp_metric_handler_requests_total[5m])",
+          "legendFormat": "Requests (Code {{code}})",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "version": 3
+}
