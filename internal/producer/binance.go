@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,11 +51,13 @@ func NewBinanceProducer(symbols []string, pool pool.Pool, repo domain.TradeRepos
 func (b *BinanceProducer) Connect(ctx context.Context) error {
 	streams := make([]string, len(b.symbols))
 	for i, symbol := range b.symbols {
-		streams[i] = fmt.Sprintf("%s@trade", symbol)
+		streams[i] = fmt.Sprintf("%s@trade", strings.ToLower(symbol))
 	}
 
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", streams[0])
-	log.Printf("Connecting to Binance WebSocket: %s", url)
+	streamPath := strings.Join(streams, "/")
+	url := fmt.Sprintf("wss://stream.binance.com:9443/stream?streams=%s", streamPath)
+
+	log.Printf("Connecting to Binance WebSocket with %d streams", len(streams))
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -68,25 +71,9 @@ func (b *BinanceProducer) Connect(ctx context.Context) error {
 	return nil
 }
 
-func (b *BinanceProducer) Start(ctx context.Context) error {
-	if b.conn == nil {
-		return fmt.Errorf("connection not established")
-	}
-
-	go b.read(ctx)
-	return nil
-}
-
-func (b *BinanceProducer) Stop() error {
-	close(b.done)
-
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if b.conn != nil {
-		return b.conn.Close()
-	}
-	return nil
+type BinanceStreamMessage struct {
+	Stream string            `json:"stream"`
+	Data   BinanceTradeEvent `json:"data"`
 }
 
 func (b *BinanceProducer) read(ctx context.Context) {
@@ -97,14 +84,15 @@ func (b *BinanceProducer) read(ctx context.Context) {
 		case <-b.done:
 			return
 		default:
-			var event BinanceTradeEvent
-			err := b.conn.ReadJSON(&event)
+			var msg BinanceStreamMessage
+			err := b.conn.ReadJSON(&msg)
 			if err != nil {
 				log.Printf("Error reading from websocket: %v", err)
 				continue
 			}
 
-			log.Printf("Received trade event: %+v", event)
+			event := msg.Data
+			log.Printf("Received trade event for %s", event.Symbol)
 
 			price, err := parseFloat(event.Price)
 			if err != nil {
@@ -135,6 +123,27 @@ func (b *BinanceProducer) read(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (b *BinanceProducer) Start(ctx context.Context) error {
+	if b.conn == nil {
+		return fmt.Errorf("connection not established")
+	}
+
+	go b.read(ctx)
+	return nil
+}
+
+func (b *BinanceProducer) Stop() error {
+	close(b.done)
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.conn != nil {
+		return b.conn.Close()
+	}
+	return nil
 }
 
 func parseFloat(s string) (float64, error) {
