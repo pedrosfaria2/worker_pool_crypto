@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pedrosfaria2/worker_pool_crypto/internal/domain"
 	"github.com/pedrosfaria2/worker_pool_crypto/internal/pool"
 	"github.com/pedrosfaria2/worker_pool_crypto/internal/producer"
 	"github.com/pedrosfaria2/worker_pool_crypto/internal/storage"
@@ -19,8 +20,8 @@ import (
 )
 
 const (
-	numWorkers = 10
-	queueSize  = 1000
+	numWorkers = 500
+	queueSize  = 10000
 )
 
 func main() {
@@ -30,7 +31,6 @@ func main() {
 	}
 
 	log.Printf("Connecting to Redis at %s", redisAddr)
-
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
@@ -53,7 +53,13 @@ func main() {
 
 	defer redisClient.Close()
 
-	repo := storage.NewRedisRepository(redisClient, 24*time.Hour)
+	symbols, err := producer.FetchUSDTPairs(ctx)
+	if err != nil {
+		log.Fatal("failed to fetch trading pairs:", err)
+	}
+	log.Printf("Found %d USDT trading pairs", len(symbols))
+
+	repo := storage.NewRedisRepository(redisClient, 48*time.Hour)
 	if repo == nil {
 		log.Fatal("failed to create repository")
 	}
@@ -61,7 +67,6 @@ func main() {
 	metrics := pool.NewMetrics("worker_pool")
 	workerPool := pool.NewPool(numWorkers, queueSize, metrics)
 
-	symbols := []string{"btcusdt", "ethusdt"}
 	bnc, err := producer.NewBinanceProducer(symbols, workerPool, repo)
 	if err != nil {
 		log.Fatal("failed to create producer:", err)
@@ -73,10 +78,11 @@ func main() {
 	mux.HandleFunc("/trades", func(w http.ResponseWriter, r *http.Request) {
 		symbol := r.URL.Query().Get("symbol")
 		if symbol == "" {
-			symbol = "btcusdt"
+			http.Error(w, "symbol parameter is required", http.StatusBadRequest)
+			return
 		}
 
-		trades, err := repo.FindBySymbol(r.Context(), symbol, 1000)
+		trades, err := repo.FindBySymbol(r.Context(), symbol, 2000)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -89,7 +95,8 @@ func main() {
 	mux.HandleFunc("/metrics/latest", func(w http.ResponseWriter, r *http.Request) {
 		symbol := r.URL.Query().Get("symbol")
 		if symbol == "" {
-			symbol = "btcusdt"
+			http.Error(w, "symbol parameter is required", http.StatusBadRequest)
+			return
 		}
 
 		metrics, err := repo.GetLatestMetrics(r.Context(), symbol)
@@ -100,6 +107,25 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(metrics)
+	})
+
+	mux.HandleFunc("/metrics/all", func(w http.ResponseWriter, r *http.Request) {
+		allMetrics := make(map[string]*domain.TradeMetrics)
+
+		for _, symbol := range symbols {
+			metrics, err := repo.GetLatestMetrics(r.Context(), symbol)
+			if err == nil && metrics != nil {
+				allMetrics[symbol] = metrics
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(allMetrics)
+	})
+
+	mux.HandleFunc("/symbols", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(symbols)
 	})
 
 	server := &http.Server{
