@@ -47,7 +47,7 @@ func (t *TradeTask) Process(ctx context.Context) error {
 		return fmt.Errorf("failed to save trade: %w", err)
 	}
 
-	trades, err := t.repo.FindBySymbol(ctx, t.trade.Symbol, 1000)
+	trades, err := t.repo.FindBySymbol(ctx, t.trade.Symbol, 2000)
 	if err != nil {
 		t.SetStatus(TaskFailed)
 		return fmt.Errorf("failed to fetch historical trades: %w", err)
