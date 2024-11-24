@@ -3,6 +3,7 @@ package producer
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -14,12 +15,26 @@ import (
 type BinanceProducer struct {
 	conn    *websocket.Conn
 	pool    pool.Pool
+	repo    domain.TradeRepository
 	symbols []string
 	mu      sync.Mutex
 	done    chan struct{}
 }
 
-func NewBinanceProducer(symbols []string, pool pool.Pool) (Producer, error) {
+type BinanceTradeEvent struct {
+	EventType    string `json:"e"`
+	EventTime    int64  `json:"E"`
+	Symbol       string `json:"s"`
+	TradeID      int64  `json:"t"`
+	Price        string `json:"p"`
+	Quantity     string `json:"q"`
+	BuyerID      int64  `json:"b"`
+	SellerID     int64  `json:"a"`
+	TradeTime    int64  `json:"T"`
+	IsBuyerMaker bool   `json:"m"`
+}
+
+func NewBinanceProducer(symbols []string, pool pool.Pool, repo domain.TradeRepository) (Producer, error) {
 	if len(symbols) == 0 {
 		return nil, fmt.Errorf("at least one symbol is required")
 	}
@@ -27,12 +42,19 @@ func NewBinanceProducer(symbols []string, pool pool.Pool) (Producer, error) {
 	return &BinanceProducer{
 		symbols: symbols,
 		pool:    pool,
+		repo:    repo,
 		done:    make(chan struct{}),
 	}, nil
 }
 
 func (b *BinanceProducer) Connect(ctx context.Context) error {
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@trade", b.symbols[0])
+	streams := make([]string, len(b.symbols))
+	for i, symbol := range b.symbols {
+		streams[i] = fmt.Sprintf("%s@trade", symbol)
+	}
+
+	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s", streams[0])
+	log.Printf("Connecting to Binance WebSocket: %s", url)
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -75,36 +97,51 @@ func (b *BinanceProducer) read(ctx context.Context) {
 		case <-b.done:
 			return
 		default:
-			var event domain.TradeEvent
+			var event BinanceTradeEvent
 			err := b.conn.ReadJSON(&event)
 			if err != nil {
+				log.Printf("Error reading from websocket: %v", err)
+				continue
+			}
+
+			log.Printf("Received trade event: %+v", event)
+
+			price, err := parseFloat(event.Price)
+			if err != nil {
+				log.Printf("Error parsing price: %v", err)
+				continue
+			}
+
+			quantity, err := parseFloat(event.Quantity)
+			if err != nil {
+				log.Printf("Error parsing quantity: %v", err)
 				continue
 			}
 
 			trade := domain.Trade{
 				Symbol:   event.Symbol,
 				ID:       event.TradeID,
-				Price:    parseFloat(event.Price),
-				Quantity: parseFloat(event.Quantity),
-				Time:     parseTime(event.Time),
-				IsBuyer:  event.IsBuyer,
-				IsMaker:  false,
+				Price:    price,
+				Quantity: quantity,
+				Time:     time.Unix(0, event.TradeTime*int64(time.Millisecond)),
+				IsBuyer:  !event.IsBuyerMaker,
+				IsMaker:  event.IsBuyerMaker,
 			}
 
-			task := domain.NewTradeTask(trade)
+			task := domain.NewTradeTask(trade, b.repo)
 			if err := b.pool.Submit(task); err != nil {
+				log.Printf("Error submitting task: %v", err)
 				continue
 			}
 		}
 	}
 }
 
-func parseFloat(s string) float64 {
+func parseFloat(s string) (float64, error) {
 	var f float64
-	fmt.Sscanf(s, "%f", &f)
-	return f
-}
-
-func parseTime(ms int64) time.Time {
-	return time.Unix(0, ms*int64(time.Millisecond))
+	_, err := fmt.Sscanf(s, "%f", &f)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse float: %w", err)
+	}
+	return f, nil
 }
